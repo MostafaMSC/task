@@ -1,0 +1,37 @@
+﻿@page
+@model LoginModel
+
+<div style="direction: rtl; display: flex; justify-content: center; align-items: center; background-color: #eee; color: black; border-radius: 10px; width: 70vw; height: 70vh;">
+
+    <section style="width: 10   0%; background-color: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);">
+        <form id="account" method="post">
+            <center><h1 style="color:black; font-family:'Times New Roman', Times, serif"><b>متجر الكتب الالكتروني</b></h1></center>
+            <hr style="color:black" />
+
+            <br />
+            <h1>@ViewData["Title"]</h1>
+            <center><h2 style="color:black; font-family:'Times New Roman', Times, serif">تسجيل الدخول</h2></center>
+
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+            <div class="col">
+                <center><input style="width:450px" placeholder="اسم المستخدم" asp-for="Input.Email" class="form-control" autocomplete="username" aria-required="true" /></center>
+                <span asp-validation-for="Input.Email" class="text-danger"></span>
+            </div>
+            <br />
+            <div class="col">
+                <center><input type="password" style="width:450px" asp-for="Input.Password" placeholder="كلمة المرور" class="form-control" autocomplete="current-password" aria-required="true" /></center>
+                <span asp-validation-for="Input.Password" class="text-danger"></span>
+            </div>
+            <br />
+            <div>
+                <center><button class="form-control" id="login-submit" type="submit" style="width:250px; background-color:white; color:#00695C"><b>الدخول</b></button></center>
+            </div>
+            <br>
+        </form>
+    </section>
+
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

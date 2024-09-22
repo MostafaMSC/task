@@ -1,0 +1,79 @@
+﻿@using BookStore.Modules
+@inject IJSRuntime _js
+@inject IWebHostEnvironment _env
+@inject NavigationManager _navigationManager
+@inject HttpClient _Http
+
+@inject ISnackbar _Sb
+
+@* @attribute [Authorize(Roles = "admin,eatalaJazaea")]
+ *@
+<div  style=" direction:rtl; border:solid;padding:20px; margin:20px;background-color:white;border-color:lightblue;border-radius:20px;">
+    <EditForm Class="first-grid" Model="books" OnValidSubmit="EditData">
+
+        <MudItem>
+            <MudTextField Style="background-color:white" Label=" عنوان الكتاب " 
+            T="string" Variant="Variant.Outlined" @bind-Value="@books.Book_Title" />
+        </MudItem>
+             
+        <MudItem>
+            <MudTextField  Style="background-color:white" 
+            Label="اسم المؤلف " T="string" Variant="Variant.Outlined" @bind-Value="@books.Book_Author" />
+        </MudItem>
+            
+        <MudItem>
+            <MudTextField  Style="background-color:white" 
+            Label="الصنف" T="string" Variant="Variant.Outlined" @bind-Value="@books.Book_Genre" />
+        </MudItem>
+               
+        <MudItem>
+            <MudTextField Style="background-color:white" 
+            Label="السعر" T="decimal" Variant="Variant.Outlined" @bind-Value="@books.Book_Price" />
+        </MudItem>
+                
+        <MudItem Class="state">
+            <MudSelect Style="background-color:white" Label="حالة الكتاب" Placeholder="هل الكتاب متوفر"
+            T="string" Variant="Variant.Outlined" @bind-Value="@books.Availablity_State" >
+                <MudSelectItem Value="@("متاح")">متاح</MudSelectItem>
+                <MudSelectItem Value="@("غير متاح")">غير متاح</MudSelectItem>
+            </MudSelect>
+        </MudItem>
+
+        <MudButton Class="state2" ButtonType="ButtonType.Submit" @onclick='() => _navigationManager.NavigateTo("../")'
+                   FullWidth Variant="Variant.Filled" StartIcon="@Icons.Material.Filled.Save" IconColor="Color.Success" Size="Size.Large">حفظ تعديلات الكتاب 
+         </MudButton>
+             
+    </EditForm>
+</div>
+
+
+ @code{
+
+
+    [CascadingParameter] 
+    MudDialogInstance MudDialog { get; set; }
+    [Parameter]
+    public int Id { get; set; }
+
+    public Books books { get; set; } = new Books();
+
+    private async Task EditData()
+    {
+        var content = JsonContent.Create(books);
+
+        var Response = await _Http.PutAsync("https://localhost:7161/api/Books/", content);
+        _Sb.Add(Response.Content.ReadAsStringAsync().Result, Severity.Info);
+
+    }
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        var response = await _Http.GetAsync($"https://localhost:7161/api/Books/GetSpecificBookById/{Id}");
+        books = await response.Content.ReadFromJsonAsync<Books>();
+
+    }
+
+
+
+}

@@ -1,0 +1,50 @@
+﻿@page
+@using BookStore.Areas.Identity.Pages.Account;
+@using Microsoft.AspNetCore.Authorization;
+
+@model RegisterModel
+@{
+    ViewData["Title"] = "Register";
+}
+
+
+<div class="row" style="direction:rtl; background-color:#607D8B; align-items:center">
+    <div class=" row-col-lg-2" >
+        <form id="registerForm" asp-route-returnUrl="@Model.ReturnUrl" method="post" style="direction:rtl">
+            <center><h1 style="color:black; font-family:'Times New Roman', Times, serif"><b>  متجر الكتب الالكتروني  </b></h1></center>
+            <hr style="color:Black" />
+            <br />
+            <center><h2 style="color:white; font-family:'Times New Roman', Times, serif"> اضافة مستخدم جديد</h2></center>
+
+            <div class="col">
+                <center>   <input style="width:450px" asp-for="Input.Email" placeholder="اسم المستخدم" class="form-control" autocomplete="username" aria-required="true" /> </center>
+                <span asp-validation-for="Input.Email" class="text-danger"></span>
+            </div>
+            <br />
+            <div class="col">
+                <center>    <input style="width:450px" type="password" placeholder="كلمة المرور" asp-for="Input.Password" class="form-control" autocomplete="new-password" aria-required="true" /> </center>
+                <span asp-validation-for="Input.Password" class="text-danger"></span>
+            </div>
+            <br />
+
+            <div class="col">
+                <center>   <input type="password" style="width:450px" asp-for="Input.ConfirmPassword" placeholder=" تاكيد كلمة المرور" class="form-control" autocomplete="new-password" aria-required="true" /> </center>
+                <span asp-validation-for="Input.ConfirmPassword" class="text-danger"></span>
+            </div>
+            <br />
+
+            <center><button icon="add" class="form-control" id="registerSubmit" type="submit" style="width:250px;background-color:white; color:#00695C"><b>اضافة المستخدم</b>  </button></center>
+            <br />
+            <div class="col">
+                <right><a  href="/" style="font-size:25px;font-family:'Times New Roman';color:white"> رجوع  </a></right>
+                <br />
+            </div>
+            <br />
+        </form>
+    </div>
+
+</div>
+@section Scripts {
+@*    <partial name="_ValidationScriptsPartial" />
+*@}
+

@@ -1,0 +1,84 @@
+﻿@* @page "/orders"
+@using BookStore.Modules
+@using System.Security.Claims
+@inject HttpClient Http
+@inject NavigationManager _Nav
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject IJSRuntime JsRuntime
+
+<h3>Checkout</h3>
+
+<EditForm Model="@newOrder" OnValidSubmit="SubmitOrder">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+
+    <MudTextField Label="Shipping Address" @bind-Value="newOrder.ShippingAddress" Required="true" />
+    <MudTextField Label="Total Amount" @bind-Value="newOrder.TotalAmount" Disabled="true" /> <!-- Show but don't allow editing -->
+
+    <MudButton Color="Color.Primary" Type="Submit">Submit Order</MudButton>
+</EditForm>
+
+@code {
+    private OrderModule newOrder = new OrderModule();
+    private string userId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        if (user.Identity.IsAuthenticated)
+        {
+            userId = user.FindFirst(c => c.Type == ClaimTypes.NameIdentifier)?.Value;
+z        }
+        else
+        {
+            _Nav.NavigateTo("/Identity/Account/Login");
+        }
+    }
+
+    private async Task LoadCartDetails()
+    {
+        // Fetch the shipping cart for the logged-in user
+        var shippingCart = await Http.GetFromJsonAsync<ShippingCartModule>($"https://localhost:7161/api/ShippingCarts/{userId}");
+
+        if (shippingCart != null)
+        {
+            // Fetch the cart items to calculate the total amount
+            var cartItems = await Http.GetFromJsonAsync<List<CartItem>>($"https://localhost:7161/api/CartItems/GetByShipID/{shippingCart.Id}");
+
+            if (cartItems != null && cartItems.Any())
+            {
+                newOrder.ShippingCartId = shippingCart.Id;
+                newOrder.TotalAmount = cartItems.Sum(item => item.Quantity * item.Quantity);
+            }
+            else
+            {
+                await JsRuntime.InvokeVoidAsync("alert", "Your cart is empty.");
+                _Nav.NavigateTo("/cart");
+            }
+        }
+        else
+        {
+            await JsRuntime.InvokeVoidAsync("alert", "No active shipping cart found.");
+            _Nav.NavigateTo("/cart");
+        }
+    }
+
+    private async Task SubmitOrder()
+    {
+        var response = await Http.PostAsJsonAsync("https://localhost:7161/api/Orders", newOrder);
+        if (response.IsSuccessStatusCode)
+        {
+            await JsRuntime.InvokeVoidAsync("alert", "Order processed successfully!");
+            _Nav.NavigateTo("/"); 
+        }
+        else
+        {
+            var error = await response.Content.ReadAsStringAsync();
+            Console.Error.WriteLine($"Error processing order: {error}");
+            await JsRuntime.InvokeVoidAsync("alert", $"Error processing order: {error}");
+        }
+    }
+}
+ *@

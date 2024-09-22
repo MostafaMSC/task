@@ -1,0 +1,109 @@
+﻿@using BookStore.Modules
+@inject IDialogService DialogService
+@inject HttpClient _Http
+@inject IJSRuntime JsRuntime
+
+<h3 style="text-align:center">اكمل التسجيل رجاءا</h3>
+<EditForm style="padding:40px 20px; display:grid;grid-template-columns:100%;justify-content:center;direction:rtl;text-align:center" Model="@order" OnValidSubmit="Submit">
+
+  
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+
+
+    @foreach (var item in BookInfo)
+    {
+        <MudTextField ReadOnly Label="عنوان الكتاب" @bind-Value="@item.Book_Title" />
+        <MudTextField ReadOnly Label="السعر" @bind-Value="@item.Book_Price" />
+
+        
+
+    }
+    <MudTextField ReadOnly Style="@TotalCountState" Label="العدد الكلي" @bind-Value="@Quantity" />
+
+    
+    <MudTextField Label="السعر الكلي" ReadOnly @bind-Value="@TotalAmount"></MudTextField>
+    <MudTextField Label="عنوان الشحن" @bind-Value="order.ShippingAddress" Required="true" />
+    <MudTextField Label=" رقم الهاتف" @bind-Value="order.phoneNumber" Required="true" />
+
+    <MudButton Color="Color.Primary" OnClick="showItems">اظهر العناصر</MudButton>
+    <MudButton Color="Color.Primary" ButtonType="ButtonType.Submit">تاكيد الطلب</MudButton>
+    <MudButton Color="Color.Secondary" OnClick="Cancel">الغاء</MudButton>
+</EditForm>
+
+@code {
+    [CascadingParameter] public MudDialogInstance MudDialog { get; set; }
+    [Parameter] public decimal TotalAmount { get; set; }
+    [Parameter] public List<CartItem> Items { get; set; }
+    [Parameter] public int shippingid { get; set; }
+    public int Quantity ;
+    public string TotalCountState = "display:none";
+    private OrderModule order = new OrderModule();
+    private List<Books> BookInfo = new List<Books>();
+
+    private async void Submit()
+    {
+        if (order.ShippingAddress == null || order.ShippingAddress == null)
+        {
+            await JsRuntime.InvokeVoidAsync("alert", "يرجى ادخال العنوان او رقم الهاتف ");
+
+        }else
+        {
+            order.TotalAmount = TotalAmount;
+            order.ShippingCartId = shippingid;
+            order.Status = "Ready To Ship";
+
+            order.OrderItems = Items.Select(item => new OrderItem
+
+
+                {
+                    BookId = item.BookId, 
+                    Quantity = item.Quantity, 
+
+                }).ToList();
+            var response = await _Http.PostAsJsonAsync("https://localhost:7161/api/Orders", order);
+            foreach (var book in BookInfo)
+            {
+                book.Availablity_State = "غير متاح";
+                var content = JsonContent.Create(book);
+
+                var Response = await _Http.PutAsync("https://localhost:7161/api/Books/", content);
+
+            }
+
+            MudDialog.Close(DialogResult.Ok(order));
+        }
+
+
+    }
+
+    private async Task showItems()
+    {
+        BookInfo.Clear();
+
+        foreach (var item in Items)
+        {
+            var response = await _Http.GetAsync($"https://localhost:7161/api/books/GetSpecificBookById/{item.BookId}");
+            if (response.IsSuccessStatusCode)
+            {
+                var book = await response.Content.ReadFromJsonAsync<Books>();
+                if (book != null)
+                {
+                    BookInfo.Add(book); 
+                    Quantity += item.Quantity;
+                }
+            }
+            else
+            {
+                Console.Error.WriteLine($"Error fetching book: {await response.Content.ReadAsStringAsync()}");
+            }
+
+        }
+        TotalCountState = "display:flex";
+    }
+
+    private void Cancel()
+    {
+        MudDialog.Cancel();
+    }
+}

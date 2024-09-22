@@ -1,0 +1,219 @@
+﻿@page "/cart"
+@using BookStore.Dialogs
+@using BookStore.Modules
+@using System.Security.Claims
+@inject HttpClient Http
+@inject NavigationManager _Nav
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject IJSRuntime JsRuntime
+@inject IDialogService _Dialog
+
+
+<h3 style="display:flex;justify-content:center;text-align:center;padding:20px">ملخص عربة التسوق</h3>
+
+@if (shippingCart == null)
+{
+    <p style="display:flex;justify-content:center;text-align:center">يتم تحميل عربتك...</p>
+}
+else if (shippingCart.UserId != userId)
+{
+    <p style="display:flex;justify-content:center;text-align:center">عربتك فارغة .</p>
+}
+else
+{
+    <h6 style="display:flex;justify-content:center;text-align:center">تاريخ التسوق: @shippingCart.DateCreated</h6>
+    <h6 style="display:flex;justify-content:center;text-align:center">عدد القطع: @cartItems.Count()</h6>
+    <div style="display:grid;grid-template-columns:30% 30% 30%;gap:10px">
+    @foreach (var item in cartItems)
+    {
+        var specificBook = BookInfo.FirstOrDefault(b => b.Id == item.BookId);
+        if (specificBook != null)
+        {
+            <MudCard>
+                <MudCardHeader>
+                    <CardHeaderAvatar>
+                        <MudAvatar Color="Color.Secondary">@specificBook.Book_Title.Substring(0, 1)</MudAvatar>
+                    </CardHeaderAvatar>
+                    <CardHeaderContent>
+                        <MudText Typo="Typo.h6">@specificBook.Book_Title</MudText>
+                        <MudText Typo="Typo.body2">Author: @specificBook.Book_Author</MudText>
+                    </CardHeaderContent>
+                </MudCardHeader>
+                <MudCardContent Style="display:absolute">
+                        <MudText Typo="Typo.body2">السعر: @specificBook.Book_Price</MudText>
+                    <MudText Typo="Typo.body2">العدد: @item.Quantity</MudText>
+                    <MudText Typo="Typo.body2">المجموع: @(specificBook.Book_Price * item.Quantity)</MudText>
+                </MudCardContent>
+                <MudCardActions Style="display:flex;justify-content:center">
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" @onclick="() => RemoveFromCart(item.BookId)">Remove</MudButton>
+                </MudCardActions>
+            </MudCard>
+        }
+    }
+    </div>
+
+    <center><h4>المبلغ الكلي : @TotalAmount</h4></center>
+    <div Style ="display:flex;justify-content:center;padding:50px">
+
+        <MudButton Variant="Variant.Filled" Color="Color.Secondary" OnClick="OrderNow">Order Now</MudButton>
+
+    </div>
+
+}
+
+<MudDialog @bind-IsVisible="isOrderModalOpen">
+    <MudDialogTitle>Enter Shipping Details</MudDialogTitle>
+    <MudDialogContent>
+        <MudTextField Label="Shipping Address" @bind-Value="shippingAddress" Required="true" />
+        <MudText Typo="Typo.h6">Total Amount: @TotalAmount</MudText>
+    </MudDialogContent>
+    <MudDialogActions>
+        <MudButton OnClick="CloseOrderModal" Variant="Variant.Text">Cancel</MudButton>
+    </MudDialogActions>
+</MudDialog>
+
+@code {
+    private ShippingCartModule shippingCart;
+    private List<CartItem> cartItems = new List<CartItem>();
+    private List<Books> BookInfo = new List<Books>();
+    private decimal TotalAmount { get; set; }
+    public string userId;
+
+    private bool isOrderModalOpen = false;
+    private string shippingAddress = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        if (user.Identity.IsAuthenticated)
+        {
+            userId = user.FindFirst(c => c.Type == ClaimTypes.NameIdentifier)?.Value;
+        }
+        else
+        {
+            _Nav.NavigateTo("/Identity/Account/Login");
+            return;
+        }
+
+        await LoadShippingCart();
+        await LoadBookInfo();
+        CalculateTotalAmount();
+    }
+
+    private async Task LoadShippingCart()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+        var userIdValue = user.FindFirst(c => c.Type == ClaimTypes.NameIdentifier)?.Value;
+
+        try
+        {
+            shippingCart = await Http.GetFromJsonAsync<ShippingCartModule>($"https://localhost:7161/api/ShippingCarts/{userIdValue}");
+            cartItems = await Http.GetFromJsonAsync<List<CartItem>>($"https://localhost:7161/api/CartItems/GetByShipID/{shippingCart.Id}");
+        }
+        catch (HttpRequestException ex)
+        {
+            Console.Error.WriteLine("خطا في سلة المشتريات " + ex.Message);
+        }
+    }
+
+    private async Task LoadBookInfo()
+    {
+        foreach (var item in cartItems)
+        {
+            var specificBook = await Http.GetFromJsonAsync<Books>($"https://localhost:7161/api/Books/GetSpecificBookById/{item.BookId}");
+            if (specificBook != null)
+            {
+                BookInfo.Add(specificBook);
+            }
+        }
+    }
+
+    private void CalculateTotalAmount()
+    {
+        TotalAmount = 0;
+
+        foreach (var item in cartItems)
+        {
+            var specificBook = BookInfo.FirstOrDefault(b => b.Id == item.BookId);
+            if (specificBook != null)
+            {
+                TotalAmount += specificBook.Book_Price * item.Quantity;
+            }
+        }
+    }
+
+    private async Task RemoveFromCart(int bookId)
+    {
+        await Http.DeleteAsync($"https://localhost:7161/api/CartItems/ByBookId/{bookId}");
+        await LoadShippingCart(); 
+        await LoadBookInfo(); 
+        CalculateTotalAmount();
+    }
+
+    private void OpenOrderModal()
+    {
+        isOrderModalOpen = true;
+    }
+
+    private void CloseOrderModal()
+    {
+        isOrderModalOpen = false;
+    }
+
+    private async Task SubmitOrder(OrderModule order)
+    {
+        var response = await Http.PostAsJsonAsync("https://localhost:7161/api/Orders", order);
+        if (response.IsSuccessStatusCode)
+        {
+            await JsRuntime.InvokeVoidAsync("alert", "تمت معالجة الطلب بنجاح");
+            var deleteCartResponse = await Http.DeleteAsync($"https://localhost:7161/api/ShippingCarts/{order.ShippingCartId}");
+
+            _Nav.NavigateTo("/");
+        }
+        else
+        {
+            var error = await response.Content.ReadAsStringAsync();
+            Console.Error.WriteLine($"خطا بالطلب: {error}");
+            await JsRuntime.InvokeVoidAsync("alert", $"خطا بالطلب: {error}");
+        }
+    }
+    private async Task OrderNow()
+    {
+        if(cartItems.Count > 0)
+        {
+            var Parameters = new DialogParameters();
+            Parameters.Add("TotalAmount", TotalAmount);
+            Parameters.Add("Items", cartItems);
+            Parameters.Add("shippingid", shippingCart.Id);
+
+
+            var ModalOptions = new DialogOptions
+                {
+                    MaxWidth = MaxWidth.Small,
+                    FullWidth = true,
+                    CloseButton = true,
+                    CloseOnEscapeKey = true,
+
+                    Position = DialogPosition.Center
+                };
+
+            var dialog = await _Dialog.ShowAsync<Orderdialoge>("تحديث معلومات الطلب", Parameters, ModalOptions);
+            var result = await dialog.Result;
+
+            if (!result.Cancelled)
+            {
+
+                await SubmitOrder(result.Data as OrderModule);
+            }
+        }
+        else
+        {
+            await JsRuntime.InvokeVoidAsync("alert", "عربتك فارغة اضف بعض الكتب");
+
+        }
+
+    }
+}

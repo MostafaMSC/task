@@ -1,0 +1,483 @@
+﻿@page "/SystemUsers"
+@inject ISystemUsers _Users
+@inject IJSRuntime _js
+@inject ISnackbar _SB
+
+@attribute [Authorize(Roles = "admin")]
+<PageTitle> ادارة مستخدمي للنظام</PageTitle>
+<MudSimpleTable Bordered="true" Outlined="true" Elevation="30" Hover="true" Dense="true" Style="margin-left:20px; padding:30px; border-color:forestgreen; margin-right:20px; border-radius:20% height:600px;border-style:groove">
+    <tbody>
+        @foreach (var item in ListOfAllUsers)
+        {
+            @if (item.HasRole == false)
+            {
+            <th style="text-align:center; font-size:20px">اسم المستخدم</th>
+            <th style="text-align:center; font-size:20px">صلاحية المستخدم  </th>
+            <th style="text-align:center; font-size:20px"> الباسورد</th>
+            <th style="text-align:center; font-size:20px">اختيار الصلاحية</th>
+                <tr style="background-color:darkgrey">
+                    
+                    <td><b>@item.UserName</b></td>
+                    
+                    <td><b>@item.Role</b></td>
+                    
+                    <td><b>@item.Password</b></td>
+                    
+                    <td>
+                        <select class="form-control" @onchange="@((ChangeEventArgs args)=>ChoseRole(args , item.UserID ))">
+                            <option> اختر صلاحية المستخدم </option>
+                            <option value="admin">admin</option>
+                        <option value="View">View</option>
+
+                        </select>
+                    </td>
+                    <td>
+                        <b>
+                        <MudFab OnClick="@(()=>DeleteUser( item.UserName ))" Label="حذف المستخدم" Style="border:solid; border-color:cadetblue ; background-color:aquamarine;font-size:large; color:#00695C" StartIcon="@Icons.Material.Filled.Delete" />
+                        </b>
+                    </td>
+
+                </tr>
+            }
+            else
+            {
+
+            <th style="text-align:center; font-size:20px">اسم المستخدم</th>
+            <th style="text-align:center; font-size:20px">صلاحية المستخدم  </th>
+            <th style="text-align:center; font-size:20px"> الباسورد</th>
+            <th style="text-align:center; font-size:20px">اختيار الصلاحية</th>
+
+                <tr style="background-color:palegreen">
+                    <td><b>@item.UserName</b></td>
+                    <td><b>@item.Role</b></td>
+                    <td><b>@item.Password</b></td>
+                    <td>
+                        <select class="form-control" @onchange="@((ChangeEventArgs args)=>ChoseRole(args , item.UserID ))">
+                            <option> اختر صلاحية المستخدم</option>
+                            <option value="admin">admin</option>
+                        <option value="View">View</option>
+
+                        </select>
+                    </td>
+                    <td>
+                        <b>
+                            <MudFab OnClick="@(()=>DeleteUser( item.UserName ))" Label="حذف المستخدم" Style="border:solid; border-color:cadetblue ; background-color:aquamarine;font-size:large; color:#00695C" StartIcon="@Icons.Material.Filled.Delete" />
+                        </b>
+                    </td>
+                </tr>
+
+            }
+        }
+    </tbody>
+</MudSimpleTable>
+@code
+{
+    bool fixedheader = true;
+
+    public List<AllUSersViewModel> ListOfAllUsers { get; set; } = new List<AllUSersViewModel>();
+    protected override async Task OnInitializedAsync()
+    {
+        ListOfAllUsers = await _Users.GetListAllUSersWithRoles();
+    }
+    private async Task MakeRegulator(string UserID)
+    {
+        var UserResponse = await _js.InvokeAsync<bool>("confirm", "Are You Sure To add User");
+        if (UserResponse == true)
+        {
+            var BackEndResponse = await _Users.AddUSerToRegularRole(UserID);
+            if (BackEndResponse == true)
+            {
+                _SB.Add("The USer Has Been Added to the Regulator ROle", Severity.Success);
+            }
+            else
+            {
+                _SB.Add("The USer Already Has Role in the System", Severity.Error);
+
+            }
+        }
+        else
+        {
+            return;
+        }
+    }
+    private async Task MakeDawaView(string UserID)
+    {
+        var UserResponse = await _js.InvokeAsync<bool>("confirm", "Are You Sure To add User");
+        if (UserResponse == true)
+        {
+            var BackEndResponse = await _Users.AddUSerToDawaViewRole(UserID);
+            if (BackEndResponse == true)
+            {
+                _SB.Add("The USer Has Been Added to the DawaView ROle", Severity.Success);
+                ListOfAllUsers = await _Users.GetListAllUSersWithRoles();
+
+            }
+            else
+            {
+
+                _SB.Add("The USer Already Has Role in the System", Severity.Error);
+
+            }
+        }
+        else
+        {
+            return;
+        }
+    }
+
+    private async Task MakeSuperVisor(string UserID)
+    {
+        var UserResponse = await _js.InvokeAsync<bool>("confirm", "Are You Sure To add User");
+        if (UserResponse == true)
+        {
+            var BackEndResponse = await _Users.AddUSerToSuperVisorRole(UserID);
+            if (BackEndResponse == true)
+            {
+                _SB.Add("The USer Has Been Added to the SuperVisor ROle", Severity.Success);
+                ListOfAllUsers = await _Users.GetListAllUSersWithRoles();
+
+            }
+            else
+            {
+                _SB.Add("The USer Already Has Role in the System", Severity.Error);
+            }
+        }
+        else
+        {
+            return;
+        }
+    }
+
+    private async Task MakeJazaeaView(string UserID)
+    {
+        var UserResponse = await _js.InvokeAsync<bool>("confirm", "Are You Sure To add User");
+        if (UserResponse == true)
+        {
+            var BackEndResponse = await _Users.AddUSerToJazaeaViewRole(UserID);
+            if (BackEndResponse == true)
+            {
+                _SB.Add("The USer Has Been Added to the DawaView ROle", Severity.Success);
+                ListOfAllUsers = await _Users.GetListAllUSersWithRoles();
+
+            }
+            else
+            {
+                _SB.Add("The USer Already Has Role in the System", Severity.Error);
+            }
+        }
+        else
+        {
+            return;
+        }
+        ListOfAllUsers = await _Users.GetListAllUSersWithRoles();
+
+    }
+    private async Task MakeAdmin(string UserID)
+    {
+        var UserResponse = await _js.InvokeAsync<bool>("confirm", "Are You Sure To add User");
+        if (UserResponse == true)
+        {
+            var BackEndResponse = await _Users.AddUSerToAdminRole(UserID);
+            if (BackEndResponse == true)
+            {
+                _SB.Add("The USer Has Been Added to the Admin ROle", Severity.Success);
+                ListOfAllUsers = await _Users.GetListAllUSersWithRoles();
+
+            }
+            else
+            {
+                _SB.Add("The USer Already Has Role in the System", Severity.Error);
+                ListOfAllUsers = await _Users.GetListAllUSersWithRoles();
+            }
+        }
+        else
+        {
+            return;
+        }
+        ListOfAllUsers = await _Users.GetListAllUSersWithRoles();
+
+    }
+    private async Task MakeViewAll(string UserID)
+    {
+        var UserResponse = await _js.InvokeAsync<bool>("confirm", "Are You Sure To add User");
+        if (UserResponse == true)
+        {
+            var BackEndResponse = await _Users.AddUSerToViewAllRole(UserID);
+            if (BackEndResponse == true)
+            {
+                _SB.Add("The USer Has Been Added to the Admin2 ROle", Severity.Success);
+                ListOfAllUsers = await _Users.GetListAllUSersWithRoles();
+
+            }
+            else
+            {
+                _SB.Add("The USer Already Has Role in the System", Severity.Error);
+
+            }
+        }
+        else
+        {
+            return;
+        }
+        ListOfAllUsers = await _Users.GetListAllUSersWithRoles();
+
+    }
+
+    private async Task EditToRegulator(string UserId)
+    {
+        var UserResponse = await _js.InvokeAsync<bool>("confirm", "Are you sure to edit the user role?");
+        if (UserResponse == true)
+        {
+            var BackEndResponse = await _Users.EditRoleFromAdminToRegulator(UserId);
+            if (BackEndResponse == true)
+            {
+                _SB.Add("The User Has been added to the Regulator role ", Severity.Success);
+                ListOfAllUsers = await _Users.GetListAllUSersWithRoles();
+            }
+            else
+            {
+                _SB.Add("The User already has a role in the system", Severity.Error);
+            }
+        }
+        else
+        {
+            return;
+        }
+        ListOfAllUsers = await _Users.GetListAllUSersWithRoles();
+
+    }
+
+    //اضافة وتحديث صلاحيات المستخدمين
+    private async Task MakeAllAdmin(string UserId)
+    {
+        var UserResponse = await _js.InvokeAsync<bool>("confirm", "Are you sure to edit the user role?");
+        if (UserResponse == true)
+        {
+            var BackEndResponse = await _Users.AddUSerToAdminRole(UserId);
+            if (BackEndResponse == true)
+            {
+                _SB.Add("The User Has been added to the Admin role ", Severity.Success);
+                ListOfAllUsers = await _Users.GetListAllUSersWithRoles();
+            }
+            else
+            {
+                _SB.Add("The User already has a role in the system", Severity.Error);
+                var UpdateResponse = await _Users.EditAllRoleToAdmin(UserId);
+                if (UpdateResponse == true)
+                {
+
+                    _SB.Add("The User Role has been Updated", Severity.Info);
+                    ListOfAllUsers = await _Users.GetListAllUSersWithRoles();
+
+
+                }
+                ListOfAllUsers = await _Users.GetListAllUSersWithRoles();
+
+            }
+        }
+        else
+        {
+            return;
+        }
+        ListOfAllUsers = await _Users.GetListAllUSersWithRoles();
+
+    }
+    private async Task MakeAllRolesDawaView(string UserId)
+    {
+        var UserResponse = await _js.InvokeAsync<bool>("confirm", "Are you sure to edit the user role?");
+        if (UserResponse == true)
+        {
+            var BackEndResponse = await _Users.AddUSerToDawaViewRole(UserId);
+            if (BackEndResponse == true)
+            {
+                _SB.Add("The User Has been added to the Admin role ", Severity.Success);
+                ListOfAllUsers = await _Users.GetListAllUSersWithRoles();
+            }
+            else
+            {
+                _SB.Add("The User already has a role in the system", Severity.Error);
+                var UpdateResponse = await _Users.EditAllRoleToDawaView(UserId);
+                if (UpdateResponse == true)
+                {
+
+                    _SB.Add("The User Role has been Updated", Severity.Info);
+                    ListOfAllUsers = await _Users.GetListAllUSersWithRoles();
+
+
+                }
+
+            }
+        }
+        else
+        {
+            return;
+        }
+        ListOfAllUsers = await _Users.GetListAllUSersWithRoles();
+
+    }
+    private async Task MakeAllRolesJazaeaView(string UserId)
+    {
+        var UserResponse = await _js.InvokeAsync<bool>("confirm", "Are you sure to edit the user role?");
+        if (UserResponse == true)
+        {
+            var BackEndResponse = await _Users.AddUSerToJazaeaViewRole(UserId);
+            if (BackEndResponse == true)
+            {
+                _SB.Add("The User Has been added to the Admin role ", Severity.Success);
+                ListOfAllUsers = await _Users.GetListAllUSersWithRoles();
+            }
+            else
+            {
+                _SB.Add("The User already has a role in the system", Severity.Error);
+                var UpdateResponse = await _Users.EditAllRoleToJazeaView(UserId);
+                if (UpdateResponse == true)
+                {
+
+                    _SB.Add("The User Role has been Updated", Severity.Info);
+                    ListOfAllUsers = await _Users.GetListAllUSersWithRoles();
+
+
+                }
+
+            }
+        }
+        else
+        {
+            return;
+        }
+        ListOfAllUsers = await _Users.GetListAllUSersWithRoles();
+
+    }
+    private async Task MakeAllRolesToRegulator(string UserId)
+    {
+        var UserResponse = await _js.InvokeAsync<bool>("confirm", "Are you sure to edit the user role?");
+        if (UserResponse == true)
+        {
+            var BackEndResponse = await _Users.AddUSerToRegularRole(UserId);
+            if (BackEndResponse == true)
+            {
+                _SB.Add("The User Has been added to the Admin role ", Severity.Success);
+                ListOfAllUsers = await _Users.GetListAllUSersWithRoles();
+            }
+            else
+            {
+                _SB.Add("The User already has a role in the system", Severity.Error);
+                var UpdateResponse = await _Users.EditAllRoleToRegulator(UserId);
+                if (UpdateResponse == true)
+                {
+
+                    _SB.Add("The User Role has been Updated", Severity.Info);
+                    ListOfAllUsers = await _Users.GetListAllUSersWithRoles();
+
+
+                }
+
+            }
+        }
+        else
+        {
+            return;
+        }
+        ListOfAllUsers = await _Users.GetListAllUSersWithRoles();
+
+    }
+    private async Task MakeAllRolesAdmin2(string UserId)
+    {
+        var UserResponse = await _js.InvokeAsync<bool>("confirm", "Are you sure to edit the user role?");
+        if (UserResponse == true)
+        {
+            var BackEndResponse = await _Users.AddUSerToAdmin2Role(UserId);
+            if (BackEndResponse == true)
+            {
+                _SB.Add("The User Has been added to the Admin role ", Severity.Success);
+                ListOfAllUsers = await _Users.GetListAllUSersWithRoles();
+            }
+            else
+            {
+                _SB.Add("The User already has a role in the system", Severity.Error);
+                var UpdateResponse = await _Users.EditAllRoleToAdmin2(UserId);
+                if (UpdateResponse == true)
+                {
+
+                    _SB.Add("The User Role has been Updated", Severity.Info);
+                    ListOfAllUsers = await _Users.GetListAllUSersWithRoles();
+                }
+            }
+        }
+        else
+        {
+            return;
+        }
+        ListOfAllUsers = await _Users.GetListAllUSersWithRoles();
+    }
+    private async Task MakeAllRolesSuperAdmin(string UserId)
+    {
+        var UserResponse = await _js.InvokeAsync<bool>("confirm", "Are you sure to edit the user role?");
+        if (UserResponse == true)
+        {
+            var BackEndResponse = await _Users.AddUSerToSuperVisorRole(UserId);
+            if (BackEndResponse == true)
+            {
+                _SB.Add("The User Has been added to the Admin role ", Severity.Success);
+                ListOfAllUsers = await _Users.GetListAllUSersWithRoles();
+            }
+            else
+            {
+                _SB.Add("The User already has a role in the system", Severity.Error);
+                var UpdateResponse = await _Users.EditAllRoleToSuperAdmin(UserId);
+                if (UpdateResponse == true)
+                {
+                    _SB.Add("The User Role has been Updated", Severity.Info);
+                    ListOfAllUsers = await _Users.GetListAllUSersWithRoles();
+                }
+            }
+        }
+        else
+        {
+            return;
+        }
+        ListOfAllUsers = await _Users.GetListAllUSersWithRoles();
+    }
+
+    private async void ChoseRole(ChangeEventArgs args, string UserId)
+    {
+        if (args.Value.ToString() == "admin")
+        {
+            await MakeAllAdmin(UserId);
+        }
+        else if (args.Value.ToString() == "View")
+        {
+            await MakeAllRolesDawaView(UserId);
+        }
+        else if (args.Value.ToString() == "eatalaJazaea")
+        {
+            await MakeAllRolesJazaeaView(UserId);
+
+        }
+        else if (args.Value.ToString() == "admin2")
+        {
+            await MakeAllRolesAdmin2(UserId);
+        }
+        else if (args.Value.ToString() == "SuperAdmin")
+        {
+            await MakeAllRolesSuperAdmin(UserId);
+        }
+        else if (args.Value.ToString() == "regulator")
+        {
+            await MakeAllRolesToRegulator(UserId);
+        }
+    }
+
+    private async void DeleteUser(string UserName)
+    {
+        var UserRes = await _js.InvokeAsync<bool>("confirm", "هل انت متاكد من الحذف");
+        if (UserRes)
+        {
+            var Response = await _Users.DeleteUser(UserName);
+            _SB.Add(Response, Severity.Success);
+        }
+        
+
+    }
+}
+

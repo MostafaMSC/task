@@ -1,0 +1,20 @@
+﻿<AuthorizeView>
+    <Authorized>
+        <a href="Identity/Account/Manage">Hello, @context.User.Identity?.Name!</a>
+        <form method="post" action="Identity/Account/LogOut">
+            <button type="submit" class="nav-link btn btn-link">Log out</button>
+        </form>
+        <MudButton Href="/cart"
+                   
+                   Rel="nofollow noopener"
+                   Variant="Variant.Outlined"
+                   EndIcon="@Icons.Material.Rounded.ShoppingBasket"
+                   Color="Color.Tertiary">
+             المشتريات
+        </MudButton>
+    </Authorized>
+    <NotAuthorized>
+        <a href="Identity/Account/Register">Register</a>
+        <a href="Identity/Account/Login">Log in</a>
+    </NotAuthorized>
+</AuthorizeView>

@@ -1,0 +1,505 @@
+﻿@page "/"
+@using BookStore.Dialogs
+@using BookStore.Modules
+@using BookStore.Services
+@using System.Security.Claims
+@inject IJSRuntime JS
+@inject IWebHostEnvironment _env
+@inject HttpClient _Http
+@inject BookService _bookService
+@inject ISnackbar _Sb
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject IDialogService _Dialog
+@inject NavigationManager _Nav
+
+
+<PageTitle>ادخال معلومات الكتاب </PageTitle>
+<AuthorizeView Roles="admin">
+                <Authorized Context="authorizedContext">
+<div style=" padding:20px; background-color:#f8f8f8; border-radius:15px;  box-shadow: 0px 4px 8px rgba(0,0,0,0.1);">
+    <center>
+        <MudText Typo="Typo.h5" Style="color:#00695C"><b> معلومات الكتاب </b></MudText>
+    </center>
+    <br />
+    <hr />
+
+
+    <EditForm OnValidSubmit="SaveData" Model="Book">
+        <DataAnnotationsValidator />
+        <ValidationSummary />
+        <div style="display:grid;grid-template-columns:30% 30% 30%;gap:50px;padding:20px">
+        <div >
+            <MudTextField Required="true" Label="عنوان الكتاب" T="string" Variant="Variant.Outlined"
+                          @bind-Value="@Book.Book_Title"  />
+        </div>
+
+        <div >
+                <MudTextField Required="true" Label="المؤلف" Placeholder=" اسم المؤلف" T="string"
+                          @bind-value="@Book.Book_Author" />
+        </div>
+
+        <div >
+            <MudTextField Required="true" Label="الاختصاص" T="string" Variant="Variant.Outlined"
+                          @bind-Value="@Book.Book_Genre" />
+        </div>
+
+        <div >
+            <MudTextField Required="true" T="decimal" @bind-value="@Book.Book_Price" Label=" السعر "
+                          Placeholder="ادخل سعر الكتاب" />
+        </div>
+
+        <div >
+                <MudSelect Required="true" Label="حالة الكتاب" Placeholder="هل الكتاب متوفر" T="string" Variant="Variant.Outlined"
+                       @bind-Value="@Book.Availablity_State" >
+                <MudSelectItem Value="@("متاح")">متاح</MudSelectItem>
+                <MudSelectItem Value="@("غير متاح")">غير متاح</MudSelectItem>
+            </MudSelect>
+        </div>
+        </div>
+
+            <MudButton ButtonType="ButtonType.Submit" FullWidth Variant="Variant.Filled"
+                       StartIcon="@Icons.Material.Filled.Save" IconColor="Color.Tertiary" Size="Size.Large"
+                       Style="background-color:#00695C; color:white;">
+                <b>حفظ الكتاب</b>
+            </MudButton>
+
+    </EditForm>
+
+
+</div>
+    </Authorized>
+    <NotAuthorized>
+        <MudButton FullWidth Variant="Variant.Filled" Style="background-color:#ccc; color:white;" Disabled>
+            <b>غير مسموح بحفظ الكتاب</b>
+        </MudButton>
+    </NotAuthorized>
+</AuthorizeView>
+<div id="Area1" class="table-responsive">
+<center><MudText Style="color:aqua" Typo="Typo.h4"></MudText></center>
+<br />
+
+<MudDataGrid Striped="true" Elevation="18" Bordered="true" 
+                Style="background-color:whitesmoke; border:solid;padding:20px;border-color:lightblue;border-radius:20px;margin-left:20px ;margin-right:20px"
+                 T="Books" MultiSelection="true" Items="@FilteredElements" SortMode="SortMode.Multiple" Filterable="false"
+                Hover="true" Hideable="true" QuickFilter="@_quickFilter" RowClick="@RowClicked" SelectedItemsChanged="@SelectedItemsChanged" >
+    <ToolBarContent>
+            <MudSelect Style="width:100px;direction:ltr;margin-right:100px" Clearable="true" T="string" @bind-Value="_selectedGenre" Label="اختر النوع">
+
+                @foreach (var Genre in BookGenre) 
+            {
+                    <MudSelectItem Value="@Genre">@Genre</MudSelectItem>
+            }
+        </MudSelect>
+            <MudSelect Clearable="true" T="string" @bind-Value="_selectedAvialble" Label="الاتاحة" Style="width:100px;direction:ltr;margin-right:100px">
+
+                @foreach (var avialble in Availabilty)
+                {
+                    <MudSelectItem Value="@avialble">@avialble</MudSelectItem>
+                }
+            </MudSelect>
+        <MudSpacer />
+        <MudTextField FullWidth @bind-Value="_searchString" Placeholder="بحث" Adornment="Adornment.Start" Immediate="true"
+                        Style="width:50%;margin-right:100px" AdornmentIcon="@Icons.Material.Filled.Search" IconSize="Size.Medium" Class="mt-0"></MudTextField>
+            <AuthorizeView Roles="admin">
+                <Authorized>
+
+
+                <MudTooltip Color="Color.Tertiary" Placement="Placement.Bottom" Arrow="true" Text="حذف الكتاب">
+                    <MudButton @onclick="DeleteBooks" Variant="Variant.Filled" style="margin-right:40px" StartIcon="@Icons.Material.Filled.Delete" Color="Color.Error"></MudButton>
+                </MudTooltip>
+
+                </Authorized>
+                <NotAuthorized>
+        <MudButton FullWidth Variant="Variant.Filled" Style="background-color:#ccc; color:white;" Disabled>
+            <b>غير مسموح بحذف الكتاب</b>
+        </MudButton>
+    </NotAuthorized>
+            </AuthorizeView>
+    </ToolBarContent>
+    <Columns>
+        <SelectColumn T="Books" />
+        <PropertyColumn Property="x => x.Book_Title" Title="عنوان الكتاب" Sortable="true" Filterable="false" />
+        <PropertyColumn Property="x => x.Book_Author" Title="المؤلف" />
+        <PropertyColumn Property="x => x.Book_Price" Title="السعر" />
+        <PropertyColumn Property="x => x.Book_Genre" Title="النوع" />
+        <PropertyColumn Property="x => x.Availablity_State" Title="حالة الكتاب" />
+            <TemplateColumn>
+
+                <CellTemplate>
+                    <MudIconButton Size="@Size.Medium" Icon="@Icons.Material.Outlined.Add" OnClick="(() => AddToCart(context.Item))">
+                        اضافة الى السلة
+                    </MudIconButton>
+                </CellTemplate>
+            </TemplateColumn>
+            <AuthorizeView Roles="admin">
+                <Authorized Context="authorizedContext">
+            <TemplateColumn>
+ 
+                <CellTemplate>
+                <MudIconButton Size="@Size.Medium" Icon="@Icons.Material.Outlined.EditNote" OnClick="(()=>StartedEditingItemFunction(context.Item))">   تعديل معلومات الكتاب</MudIconButton>
+            </CellTemplate>
+        </TemplateColumn>
+                </Authorized>
+                
+            </AuthorizeView>
+
+    </Columns>
+
+    <PagerContent>
+        <MudDataGridPager T="Books" />
+    </PagerContent>
+</MudDataGrid>
+</div>
+
+<MudScrollToTop>
+<MudFab Color="Color.Tertiary" Icon="@Icons.Material.Filled.ArrowCircleUp" />
+</MudScrollToTop>
+
+
+    <MudScrollToTop>
+        <MudFab Color="Color.Tertiary" Icon="@Icons.Material.Filled.ArrowCircleUp" />
+    </MudScrollToTop>
+
+@code {
+    public Books Book { get; set; } = new Books();
+    public string UserName;
+    private ShippingCartModule shippingCart = new ShippingCartModule();
+    private string userId;
+    public int Quantity;
+    public IEnumerable<Books> Elements { get; set; } = new List<Books>();
+    public List<Books> ListOfSelectedBooks { get; set; } = new List<Books>();
+
+    private List<string> _events = new();
+    private string _selectedGenre = string.Empty;
+    private List<string> BookGenre = new List<string>(); 
+    private List<string> Availabilty = new List<string>();
+    private string _selectedAvialble = string.Empty;
+
+
+    private IEnumerable<Books> FilteredElements => Elements
+        .Where(b => (string.IsNullOrEmpty(_selectedGenre) || b.Book_Genre == _selectedGenre)
+                && (string.IsNullOrEmpty(_selectedAvialble) || b.Availablity_State == _selectedAvialble))
+        .ToList();
+
+
+    private string _searchString;
+    private bool _sortNameByLength;
+    protected async override void OnInitialized()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        if (user.Identity.IsAuthenticated)
+        {
+            userId = user.Identity.Name;
+        }
+        else
+        {
+            _Nav.NavigateTo("/Identity/Account/Login");
+            return;
+        }
+
+        base.OnInitialized();
+
+
+    }
+    private async Task SaveData()
+    {
+        if (string.IsNullOrEmpty(Book.Book_Title))
+        {
+            await JS.InvokeVoidAsync("alert", "يرجى ادخال العنوان");
+            return;
+        }
+
+        if (string.IsNullOrEmpty(Book.Book_Author))
+        {
+            await JS.InvokeVoidAsync("alert", "يرجى ادخال المؤلف");
+            return;
+        }
+
+        if (Book.Book_Price <= 0)
+        {
+            await JS.InvokeVoidAsync("alert", "السعر يجيب ان يكون اكبر من صفر");
+            return;
+        }
+
+        var userResponse = await JS.InvokeAsync<bool>("confirm", "هل انت متاكد من اضافة الكتاب");
+        if (userResponse)
+        {
+            try
+            {
+                var response = await _bookService.AddBook(Book);
+                if (response.IsSuccessStatusCode)
+                {
+                    await JS.InvokeVoidAsync("alert", "تم اضافة الكتاب بنجاح");
+                    Book = new Books();
+                    var response2 = await _Http.GetAsync("https://localhost:7161/api/Books");
+                    Elements = await response2.Content.ReadFromJsonAsync<List<Books>>();
+                }
+                else
+                {
+                    var error = await response.Content.ReadAsStringAsync();
+                    await JS.InvokeVoidAsync("alert", $"خطا عند اضافة الكتاب: {error}");
+                }
+            }
+            catch (Exception ex)
+            {
+                await JS.InvokeVoidAsync("alert", $"خطا عند اضافة الكتاب: {ex.Message}");
+            }
+        }
+    }
+
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        var response = await _Http.GetAsync("https://localhost:7161/api/Books");
+        Elements = await response.Content.ReadFromJsonAsync<List<Books>>();
+        BookGenre = Elements.Select(b => b.Book_Genre).Distinct().ToList();
+        Availabilty = Elements.Select(b => b.Availablity_State).Distinct().ToList();
+
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+        var userId = user.FindFirst(c => c.Type == ClaimTypes.NameIdentifier)?.Value;
+
+        if (string.IsNullOrEmpty(userId))
+        {
+            Console.Error.WriteLine("المستخدم غير موجود");
+            return;
+        }
+        ShippingCartModule shippingCart = null;
+
+        try
+        {
+            shippingCart = await _Http.GetFromJsonAsync<ShippingCartModule>($"https://localhost:7161/api/ShippingCarts/{userId}");
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"مشكلة في سلة المشتريات: {ex.Message}");
+            // return;
+        }
+
+
+        if (shippingCart == null)
+        {
+            var newShippingCart = new ShippingCartModule
+                {
+                    UserId = userId,
+                    DateCreated = DateTime.UtcNow
+                };
+
+            try
+            {
+                var createCartResponse = await _Http.PostAsJsonAsync("https://localhost:7161/api/ShippingCarts", newShippingCart);
+
+                if (createCartResponse.IsSuccessStatusCode)
+                {
+                    shippingCart = await createCartResponse.Content.ReadFromJsonAsync<ShippingCartModule>();
+                }
+                else
+                {
+                    Console.Error.WriteLine("مشكلة عند انشاء السلة");
+                    return;
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.Error.WriteLine($"مشكلة : {ex.Message}");
+                return;
+            }
+        }
+    }
+
+
+    void RowClicked(DataGridRowClickEventArgs<Books> args)
+    {
+        _events.Insert(0, $"Event = RowClick, Index = {args.RowIndex}, Data = {System.Text.Json.JsonSerializer.Serialize(args.Item)}");
+    }
+
+    void SelectedItemsChanged(HashSet<Books> items)
+    {
+        _events.Insert(0, $"Event = SelectedItemsChanged, Data = {System.Text.Json.JsonSerializer.Serialize(items)}");
+        ListOfSelectedBooks = items.ToList();
+    }
+
+    private async Task DeleteBooks()
+    {
+        var Response = await JS.InvokeAsync<bool>("confirm", "هل انت متاكد من الحذف");
+        if (Response)
+        {
+            foreach (var record in ListOfSelectedBooks)
+            {
+                var requestUri = $"https://localhost:7161/api/books/{record.Id}";
+                var BackEndResponse = await _Http.DeleteAsync(requestUri);
+                var result = await BackEndResponse.Content.ReadAsStringAsync();
+                _Sb.Add(result, Severity.Success);
+
+            }
+            var response = await _Http.GetAsync("https://localhost:7161/api/Books");
+            Elements = await response.Content.ReadFromJsonAsync<List<Books>>();
+        }
+        else
+        {
+            return;
+        }
+    }
+
+    private Func<Books, bool> _quickFilter => x =>
+    {
+        if (string.IsNullOrWhiteSpace(_searchString))
+            return true;
+
+        if (x.Book_Title.Contains(_searchString, StringComparison.OrdinalIgnoreCase))
+            return true;
+        if (x.Book_Author.Contains(_searchString, StringComparison.OrdinalIgnoreCase))
+            return true;
+        if (x.Book_Genre.Contains(_searchString, StringComparison.OrdinalIgnoreCase))
+            return true;
+
+
+        if ($"{x.Book_Title} {x.Book_Author} {x.Book_Price}".Contains(_searchString))
+            return true;
+
+        return false;
+    };
+    private async Task StartedEditingItemFunction(Books item)
+    {
+        var Parameters = new DialogParameters();
+        Parameters.Add("Id", item.Id);
+        var ModalOptions = new DialogOptions();
+        ModalOptions.MaxWidth = MaxWidth.Small;
+        ModalOptions.FullWidth = true;
+        ModalOptions.CloseButton = true;
+        ModalOptions.CloseOnEscapeKey = true;
+        ModalOptions.Position = DialogPosition.Center;
+        await _Dialog.ShowAsync<EditBooks>("تحديث الكتاب", Parameters, ModalOptions);
+    }
+    private async Task AddToCart(Books item)
+    {
+
+        if (item.Availablity_State == "متاح")
+        {
+            var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+            var user = authState.User;
+
+            if (user.Identity.IsAuthenticated)
+            {
+                var userId = user.FindFirst(c => c.Type == ClaimTypes.NameIdentifier)?.Value;
+
+                if (string.IsNullOrEmpty(userId))
+                {
+                    Console.Error.WriteLine("User ID not found.");
+                    return;
+                }
+                ShippingCartModule shippingCart = null;
+
+
+                try
+                {
+                    shippingCart = await _Http.GetFromJsonAsync<ShippingCartModule>($"https://localhost:7161/api/ShippingCarts/{userId}");
+                }
+                catch (Exception ex)
+                {
+                    Console.Error.WriteLine($"Error fetching shipping cart: {ex.Message}");
+                }
+
+                if (shippingCart == null)
+                {
+                    var newShippingCart = new ShippingCartModule
+                        {
+                            UserId = userId,
+                            DateCreated = DateTime.UtcNow 
+                        };
+
+                    try
+                    {
+                        var createCartResponse = await _Http.PostAsJsonAsync("https://localhost:7161/api/ShippingCarts", newShippingCart);
+
+                        if (createCartResponse.IsSuccessStatusCode)
+                        {
+                            shippingCart = await createCartResponse.Content.ReadFromJsonAsync<ShippingCartModule>();
+                        }
+                        else
+                        {
+                            Console.Error.WriteLine("مشكلة في السلة");
+                            return;
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.Error.WriteLine($"مشكلة في انشاء السلة: {ex.Message}");
+                        return;
+                    }
+                }
+                var Myresponse = JS.InvokeAsync<bool>("confirm", "هل انت متاكد من اضافة هذا الكتاب الى السلة");
+                if (await Myresponse)
+                {
+                    var quantityString = await JS.InvokeAsync<string>("prompt", "أدخل عدد الكتب:");
+                    int.TryParse(quantityString, out int quantity);
+
+
+                    var cartItem = new CartItem
+                        {
+                            BookId = item.Id,
+                            ShippingCartId = shippingCart.Id,
+                            Quantity = quantity 
+                        };
+
+                    try
+                    {
+                        var addItemResponse = await _Http.PostAsJsonAsync("https://localhost:7161/api/CartItems", cartItem);
+                        if (addItemResponse.IsSuccessStatusCode)
+                        {
+                            _Sb.Add("تم اضافة الكتاب بنجاح", Severity.Success);
+
+                            await LoadShippingCart(shippingCart.Id); 
+                        }
+                        else
+                        {
+                            Console.Error.WriteLine("خطا في انشاء السلة");
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.Error.WriteLine($"خطا في انشاء السلة: {ex.Message}");
+                    }
+                }
+
+
+
+
+            }
+            else
+            {
+                // Redirect to login page if the user is not authenticated
+                _Nav.NavigateTo("authentication/login");
+            }
+
+        }
+        else
+        {
+            var Myresponse = JS.InvokeAsync<bool>("alert", "هذا الكتاب غير متاح للاسف");
+
+        }
+
+        
+    }
+
+    // Method to load the shipping cart details
+    private async Task LoadShippingCart(int cartId)
+    {
+        try
+        {
+            shippingCart = await _Http.GetFromJsonAsync<ShippingCartModule>($"https://localhost:7161/api/ShippingCarts/{cartId}");
+            if (shippingCart == null)
+            {
+                Console.Error.WriteLine($"Error: غيير موجور {cartId} ");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"خطا في تحميل سلة المشتريات: {ex.Message}");
+        }
+    }
+
+}
